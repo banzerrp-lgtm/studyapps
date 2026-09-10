@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'grades_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
-import 'quiz_builder_screen.dart';
+import 'quiz_list_screen.dart';
 import 'schedule_screen.dart';
 import 'subjects_screen.dart';
 import 'tasks_screen.dart';
@@ -17,7 +17,6 @@ class MainScreen extends StatefulWidget {
 
 class MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
-  int _quizOriginIndex = 0;
 
   final titles = const [
     'Inicio',
@@ -28,22 +27,6 @@ class MainScreenState extends State<MainScreen> {
     'Materias',
   ];
 
-  void _openQuizBuilder() {
-    _quizOriginIndex = selectedIndex;
-    setState(() {
-      selectedIndex = 3;
-    });
-
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const QuizBuilderScreen()))
-        .then((_) {
-          if (!mounted) return;
-          setState(() {
-            selectedIndex = _quizOriginIndex;
-          });
-        });
-  }
-
   Widget _getScreen(int index) {
     switch (index) {
       case 0:
@@ -53,7 +36,7 @@ class MainScreenState extends State<MainScreen> {
       case 2:
         return const TasksScreen(key: ValueKey('tasks'));
       case 3:
-        return const SizedBox.shrink();
+        return const QuizListScreen(key: ValueKey('quiz_list'));
       case 4:
         return const GradesScreen(key: ValueKey('grades'));
       case 5:
@@ -89,11 +72,6 @@ class MainScreenState extends State<MainScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
-          if (index == 3) {
-            _openQuizBuilder();
-            return;
-          }
-
           setState(() {
             selectedIndex = index;
           });

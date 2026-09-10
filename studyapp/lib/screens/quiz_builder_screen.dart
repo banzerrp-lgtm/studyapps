@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/quiz.dart';
+import '../providers/subjects_provider.dart';
+import '../services/database_service.dart';
 
 class QuizBuilderScreen extends StatefulWidget {
   const QuizBuilderScreen({super.key});
@@ -95,6 +98,14 @@ class _QuizBuilderScreenState extends State<QuizBuilderScreen> {
   void _save() {
     final quiz = _draft.buildQuiz();
 
+    if (quiz.subject.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona una materia válida.')),
+      );
+      return;
+    }
+
+    DatabaseService.instance.saveQuiz(quiz);
     if (Navigator.of(context).canPop()) {
       Navigator.pop(context, quiz);
       return;
@@ -203,7 +214,18 @@ class _QuizBuilderScreenState extends State<QuizBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final subjects = context.watch<SubjectsProvider>().subjects;
+
     if (_showConfig) {
+      final selectedSubject = _subjectController.text.trim();
+      final subjectValue = subjects.contains(selectedSubject)
+          ? selectedSubject
+          : (subjects.isNotEmpty ? subjects.first : null);
+
+      if (subjectValue != null && _subjectController.text.trim().isEmpty) {
+        _subjectController.text = subjectValue;
+      }
+
       return Scaffold(
         appBar: AppBar(
           title: const Text('Nuevo quiz'),
@@ -229,13 +251,38 @@ class _QuizBuilderScreenState extends State<QuizBuilderScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _subjectController,
-                  decoration: const InputDecoration(
-                    labelText: 'Materia',
-                    border: OutlineInputBorder(),
+                if (subjects.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Primero crea al menos una materia en la sección de Materias.',
+                    ),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    value: subjectValue,
+                    decoration: const InputDecoration(
+                      labelText: 'Materia',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: subjects
+                        .map(
+                          (subject) => DropdownMenuItem(
+                            value: subject,
+                            child: Text(subject),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _subjectController.text = value;
+                    },
                   ),
-                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _descriptionController,
@@ -597,7 +644,7 @@ class _QuestionEditorState extends State<QuestionEditor> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<QuizDifficulty>(
-                    value: widget.question.difficulty,
+                    initialValue: widget.question.difficulty,
                     decoration: const InputDecoration(
                       labelText: 'Dificultad',
                       border: OutlineInputBorder(),
@@ -745,21 +792,21 @@ class _MultipleChoiceEditorState extends State<_MultipleChoiceEditor> {
         const SizedBox(height: 8),
         ...List.generate(options.length, (index) {
           final option = options[index];
+          final selected = widget.question.correctOptionId == option.id;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Radio<String>(
-                  value: option.id,
-                  groupValue: widget.question.correctOptionId,
-                  onChanged: (value) {
-                    if (value == null) return;
+                ChoiceChip(
+                  label: Text('Correcta'),
+                  selected: selected,
+                  onSelected: (_) {
                     widget.onChanged(
                       MultipleChoiceQuestion(
                         id: widget.question.id,
                         statement: widget.question.statement,
                         options: widget.question.options,
-                        correctOptionId: value,
+                        correctOptionId: option.id,
                         imageUrl: widget.question.imageUrl,
                         explanation: widget.question.explanation,
                         difficulty: widget.question.difficulty,
@@ -768,6 +815,7 @@ class _MultipleChoiceEditorState extends State<_MultipleChoiceEditor> {
                     );
                   },
                 ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: TextEditingController(text: option.text),

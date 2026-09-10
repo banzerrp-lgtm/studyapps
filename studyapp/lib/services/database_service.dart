@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/evaluation_config.dart';
 import '../models/note.dart';
+import '../models/quiz.dart';
 import '../models/schedule_item.dart';
 import '../models/task.dart';
 import '../models/term_grade.dart';
@@ -37,7 +38,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -99,6 +100,17 @@ class DatabaseService {
             attachments TEXT NOT NULL DEFAULT '[]'
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE quizzes(
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            description TEXT NOT NULL,
+            quizJson TEXT NOT NULL,
+            createdAt TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -110,6 +122,25 @@ class DatabaseService {
           await db.execute(
             "ALTER TABLE notes ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'",
           );
+        }
+        if (oldVersion < 4) {
+          final exists = await db.query(
+            'sqlite_master',
+            where: 'type = ? AND name = ?',
+            whereArgs: ['table', 'quizzes'],
+          );
+          if (exists.isEmpty) {
+            await db.execute('''
+              CREATE TABLE quizzes(
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                description TEXT NOT NULL,
+                quizJson TEXT NOT NULL,
+                createdAt TEXT NOT NULL
+              )
+            ''');
+          }
         }
       },
     );
@@ -157,6 +188,36 @@ class DatabaseService {
   Future<void> deleteSubject(String name) async {
     final db = await database;
     await db.delete('subjects', where: 'name = ?', whereArgs: [name]);
+  }
+
+  // ---------------- QUIZZES ----------------
+
+  Future<List<Quiz>> loadQuizzes() async {
+    final db = await database;
+    final rows = await db.query('quizzes', orderBy: 'createdAt DESC');
+
+    return rows.map((row) {
+      final json =
+          jsonDecode(row['quizJson'] as String) as Map<String, dynamic>;
+      return Quiz.fromJson(json);
+    }).toList();
+  }
+
+  Future<void> saveQuiz(Quiz quiz) async {
+    final db = await database;
+    await db.insert('quizzes', {
+      'id': quiz.id,
+      'title': quiz.title,
+      'subject': quiz.subject,
+      'description': quiz.description,
+      'quizJson': jsonEncode(quiz.toJson()),
+      'createdAt': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> deleteQuiz(String id) async {
+    final db = await database;
+    await db.delete('quizzes', where: 'id = ?', whereArgs: [id]);
   }
 
   // ---------------- HORARIO ----------------
