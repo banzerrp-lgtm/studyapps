@@ -17,9 +17,14 @@ class TasksProvider extends ChangeNotifier {
   int get completedCount => _tasks.where((task) => task.completed).length;
 
   Future<void> load() async {
-    _tasks = await _db.loadTasks();
-    _loading = false;
-    notifyListeners();
+    try {
+      _tasks = await _db.loadTasks();
+    } catch (error, stackTrace) {
+      debugPrint('No se pudieron cargar las tareas: $error\n$stackTrace');
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addTask({

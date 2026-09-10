@@ -19,9 +19,14 @@ class NotesProvider extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    _notes = await _db.loadNotes();
-    _loading = false;
-    notifyListeners();
+    try {
+      _notes = await _db.loadNotes();
+    } catch (error, stackTrace) {
+      debugPrint('No se pudieron cargar los apuntes: $error\n$stackTrace');
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> saveNote(Note note) async {

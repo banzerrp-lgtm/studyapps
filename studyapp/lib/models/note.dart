@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'attachment.dart';
+
 class Note {
   final String id;
   final String subject;
@@ -7,6 +9,8 @@ class Note {
   final String content;
   final DateTime date;
   final List<String> files;
+  final String? drawingJson;
+  final List<Attachment> attachments;
 
   const Note({
     required this.id,
@@ -15,6 +19,8 @@ class Note {
     required this.content,
     required this.date,
     this.files = const [],
+    this.drawingJson,
+    this.attachments = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -25,6 +31,10 @@ class Note {
       'content': content,
       'date': date.toIso8601String(),
       'files': jsonEncode(files),
+      'drawingJson': drawingJson ?? '',
+      'attachments': jsonEncode(
+        attachments.map((attachment) => attachment.toJson()).toList(),
+      ),
     };
   }
 
@@ -51,7 +61,24 @@ class Note {
       content: map['content']?.toString() ?? '',
       date: DateTime.parse(map['date'].toString()),
       files: decoded.map((item) => item.toString()).toList(),
+      drawingJson: (map['drawingJson']?.toString().isEmpty ?? true)
+          ? null
+          : map['drawingJson'].toString(),
+      attachments: _decodeAttachments(map['attachments']),
     );
+  }
+
+  static List<Attachment> _decodeAttachments(Object? raw) {
+    if (raw is! String || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(Attachment.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Note copyWith({
@@ -61,6 +88,8 @@ class Note {
     String? content,
     DateTime? date,
     List<String>? files,
+    String? drawingJson,
+    List<Attachment>? attachments,
   }) {
     return Note(
       id: id ?? this.id,
@@ -69,6 +98,8 @@ class Note {
       content: content ?? this.content,
       date: date ?? this.date,
       files: files ?? this.files,
+      drawingJson: drawingJson ?? this.drawingJson,
+      attachments: attachments ?? this.attachments,
     );
   }
 }

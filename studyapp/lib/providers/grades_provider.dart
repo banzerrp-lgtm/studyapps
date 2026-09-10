@@ -23,15 +23,23 @@ class GradesProvider extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    _grades = await _db.loadGrades();
-    _configs = await _db.loadAllConfigs();
-    _loading = false;
-    notifyListeners();
+    try {
+      _grades = await _db.loadGrades();
+      _configs = await _db.loadAllConfigs();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'No se pudieron cargar las calificaciones: $error\n$stackTrace',
+      );
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> saveGrade(TermGrade grade) async {
     _grades.removeWhere(
-      (item) => item.subject == grade.subject && item.trimester == grade.trimester,
+      (item) =>
+          item.subject == grade.subject && item.trimester == grade.trimester,
     );
     _grades.add(grade);
     notifyListeners();

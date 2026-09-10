@@ -12,14 +12,20 @@ class SubjectsProvider extends ChangeNotifier {
   bool get loading => _loading;
 
   Future<void> load() async {
-    _subjects = await _db.loadSubjects();
-    _loading = false;
-    notifyListeners();
+    try {
+      _subjects = await _db.loadSubjects();
+    } catch (error, stackTrace) {
+      debugPrint('No se pudieron cargar las materias: $error\n$stackTrace');
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> addSubject(String name) async {
-    final exists =
-        _subjects.any((item) => item.toLowerCase() == name.toLowerCase());
+    final exists = _subjects.any(
+      (item) => item.toLowerCase() == name.toLowerCase(),
+    );
 
     if (exists) {
       return false;

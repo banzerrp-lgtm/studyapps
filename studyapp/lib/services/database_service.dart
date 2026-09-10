@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -13,10 +14,22 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._();
 
   Database? _db;
+  Future<Database>? _opening;
 
   Future<Database> get database async {
-    _db ??= await _open();
-    return _db!;
+    if (_db != null) {
+      return _db!;
+    }
+
+    final opening = _opening ??= _open();
+
+    try {
+      return _db = await opening;
+    } finally {
+      if (identical(_opening, opening)) {
+        _opening = null;
+      }
+    }
   }
 
   Future<Database> _open() async {
@@ -24,7 +37,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -81,9 +94,23 @@ class DatabaseService {
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             date TEXT NOT NULL,
-            files TEXT NOT NULL
+            files TEXT NOT NULL,
+            drawingJson TEXT NOT NULL DEFAULT '',
+            attachments TEXT NOT NULL DEFAULT '[]'
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE notes ADD COLUMN drawingJson TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute(
+            "ALTER TABLE notes ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'",
+          );
+        }
       },
     );
   }
@@ -98,8 +125,11 @@ class DatabaseService {
 
   Future<void> upsertTask(Task task) async {
     final db = await database;
-    await db.insert('tasks', task.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'tasks',
+      task.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deleteTask(String id) async {
@@ -118,11 +148,10 @@ class DatabaseService {
   Future<void> addSubject(String name) async {
     final db = await database;
     final existing = await db.query('subjects');
-    await db.insert(
-      'subjects',
-      {'name': name, 'position': existing.length},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('subjects', {
+      'name': name,
+      'position': existing.length,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteSubject(String name) async {
@@ -140,8 +169,11 @@ class DatabaseService {
 
   Future<void> upsertScheduleItem(ScheduleItem item) async {
     final db = await database;
-    await db.insert('schedule', item.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'schedule',
+      item.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deleteScheduleItem(String id) async {
@@ -159,8 +191,11 @@ class DatabaseService {
 
   Future<void> upsertGrade(TermGrade grade) async {
     final db = await database;
-    await db.insert('grades', grade.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'grades',
+      grade.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deleteGrade({
@@ -206,11 +241,10 @@ class DatabaseService {
     EvaluationConfig config,
   ) async {
     final db = await database;
-    await db.insert(
-      'configs',
-      {'subject': subject, 'configJson': jsonEncode(config.toMap())},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('configs', {
+      'subject': subject,
+      'configJson': jsonEncode(config.toMap()),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // ---------------- APUNTES ----------------
@@ -223,8 +257,11 @@ class DatabaseService {
 
   Future<void> upsertNote(Note note) async {
     final db = await database;
-    await db.insert('notes', note.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+      'notes',
+      note.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deleteNote(String id) async {

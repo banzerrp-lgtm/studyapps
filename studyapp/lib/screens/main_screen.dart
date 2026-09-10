@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'grades_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'quiz_builder_screen.dart';
 import 'schedule_screen.dart';
 import 'subjects_screen.dart';
 import 'tasks_screen.dart';
@@ -16,8 +17,32 @@ class MainScreen extends StatefulWidget {
 
 class MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
+  int _quizOriginIndex = 0;
 
-  final titles = const ['Inicio', 'Horario', 'Tareas', 'Calificaciones', 'Materias'];
+  final titles = const [
+    'Inicio',
+    'Horario',
+    'Tareas',
+    'Quiz',
+    'Calificaciones',
+    'Materias',
+  ];
+
+  void _openQuizBuilder() {
+    _quizOriginIndex = selectedIndex;
+    setState(() {
+      selectedIndex = 3;
+    });
+
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const QuizBuilderScreen()))
+        .then((_) {
+          if (!mounted) return;
+          setState(() {
+            selectedIndex = _quizOriginIndex;
+          });
+        });
+  }
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -28,8 +53,10 @@ class MainScreenState extends State<MainScreen> {
       case 2:
         return const TasksScreen(key: ValueKey('tasks'));
       case 3:
-        return const GradesScreen(key: ValueKey('grades'));
+        return const SizedBox.shrink();
       case 4:
+        return const GradesScreen(key: ValueKey('grades'));
+      case 5:
         return const SubjectsScreen(key: ValueKey('subjects'));
       default:
         return const HomeScreen();
@@ -40,14 +67,20 @@ class MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[selectedIndex], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          titles[selectedIndex],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
             tooltip: 'Perfil',
             icon: const Icon(Icons.person_outline),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
             },
           ),
         ],
@@ -56,6 +89,11 @@ class MainScreenState extends State<MainScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
+          if (index == 3) {
+            _openQuizBuilder();
+            return;
+          }
+
           setState(() {
             selectedIndex = index;
           });
@@ -75,6 +113,11 @@ class MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.task_alt_outlined),
             selectedIcon: Icon(Icons.task_alt),
             label: 'Tareas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.quiz_outlined),
+            selectedIcon: Icon(Icons.quiz),
+            label: 'Quiz',
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),

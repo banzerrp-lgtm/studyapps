@@ -14,9 +14,14 @@ class ScheduleProvider extends ChangeNotifier {
   bool get loading => _loading;
 
   Future<void> load() async {
-    _schedule = await _db.loadSchedule();
-    _loading = false;
-    notifyListeners();
+    try {
+      _schedule = await _db.loadSchedule();
+    } catch (error, stackTrace) {
+      debugPrint('No se pudo cargar el horario: $error\n$stackTrace');
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addItem({
