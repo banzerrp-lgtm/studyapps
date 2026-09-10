@@ -196,11 +196,27 @@ class DatabaseService {
     final db = await database;
     final rows = await db.query('quizzes', orderBy: 'createdAt DESC');
 
-    return rows.map((row) {
-      final json =
-          jsonDecode(row['quizJson'] as String) as Map<String, dynamic>;
-      return Quiz.fromJson(json);
-    }).toList();
+    final result = <Quiz>[];
+
+    for (final row in rows) {
+      try {
+        final rawJson = row['quizJson'];
+        if (rawJson == null || rawJson is! String || rawJson.trim().isEmpty) {
+          continue;
+        }
+
+        final decoded = jsonDecode(rawJson);
+        if (decoded is! Map<String, dynamic>) {
+          continue;
+        }
+
+        result.add(Quiz.fromJson(decoded));
+      } catch (_) {
+        // Fila de quiz corrupta: se ignora para no romper la pantalla.
+      }
+    }
+
+    return result;
   }
 
   Future<void> saveQuiz(Quiz quiz) async {
